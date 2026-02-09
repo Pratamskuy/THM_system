@@ -209,38 +209,34 @@ const approve = (req, res) => {
             });
         }
 
-        // Kurangi jumlah tersedia item
-        item.updateJumlahTersedia(peminjaman.id_items, peminjaman.item_count, 'kurang', (err, result) => {
-            if (err || result.affectedRows === 0) {
+          // Approve peminjaman (termasuk pengurangan stok di model)
+          borrow.approve(id, officer_id, (err, results) => {
+            if (err) {
+                return res.status(500).json({
+                    success: false,
+                    message: "Gagal menyetujui peminjaman",
+                    error: err.message
+                });
+            }
+
+            if (results.affectedRows === 0) {
                 return res.status(400).json({
                     success: false,
                     message: "Gagal memperbarui stok item"
                 });
             }
+            // Catat log aktivitas
+            activityLog.create({
+                id_user: officer_id,
+                aksi: 'APPROVE',
+                tabel_terkait: 'peminjaman',
+                id_data: id,
+                keterangan: `borrow disetujui: ID ${id}`
+            }, () => { });
 
-            // Approve peminjaman
-            borrow.approve(id, officer_id, (err, results) => {
-                if (err) {
-                    return res.status(500).json({
-                        success: false,
-                        message: "Gagal menyetujui peminjaman",
-                        error: err.message
-                    });
-                }
-
-                // Catat log aktivitas
-                activityLog.create({
-                    id_user: officer_id,
-                    aksi: 'APPROVE',
-                    tabel_terkait: 'peminjaman',
-                    id_data: id,
-                    keterangan: `borrow disetujui: ID ${id}`
-                }, () => { });
-
-                res.status(200).json({
-                    success: true,
-                    message: "borrow berhasil disetujui"
-                });
+            res.status(200).json({
+                success: true,
+                message: "borrow berhasil disetujui"
             });
         });
     });
