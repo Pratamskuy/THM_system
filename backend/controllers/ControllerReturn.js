@@ -89,7 +89,7 @@ const create = (req, res) => {
             officer_id,
             item_condition,
             notes,
-            return_date_expected: borrow_data.return_date_expecte
+            return_date_expected: borrow_data.return_date_expected
         };
 
         // Buat record pengembalian
