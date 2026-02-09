@@ -1,4 +1,5 @@
 const db = require("../db");
+const DENDA_PER_HARI = 5000;
 //get all(aku wis mumet)
 const getAll = (callback) => {
     const query = `
@@ -11,7 +12,7 @@ const getAll = (callback) => {
             items.item_name,
             officer.full_name as nama_officer
         FROM return_data
-        LEFT JOIN borrow_data ON return_data.id_borrow_data = borrow_data.id
+        LEFT JOIN borrow_data ON return_data.borrow_id = borrow_data.id
         LEFT JOIN user_data ON borrow_data.id_user = user_data.id
         LEFT JOIN items ON borrow_data.id_items = items.id
         LEFT JOIN user_data as officer ON return_data.officer_id = officer.id
@@ -31,7 +32,7 @@ const getById = (id, callback) => {
             user_data.full_name as nama_peminjam,
             items.item_name
         FROM return_data
-        LEFT JOIN borrow_data ON return_data.id_borrow_data = borrow_data.id
+        LEFT JOIN borrow_data ON return_data.borrow_id = borrow_data.id
         LEFT JOIN user_data ON borrow_data.id_user = user_data.id
         LEFT JOIN items ON borrow_data.id_items = items.id
         WHERE return_data.id = ?
@@ -45,7 +46,7 @@ const hitungDenda = (returnDateExpected, returnDate, kondisi = 'normal') => {
     const kembali = new Date(returnDate);
 
     // Hitung selisih hari
-    const selisih = Math.floor((kembali - harusKembali) / (1000 * 60 * 60 * 24));
+    let selisih = Math.floor((kembali - harusKembali) / (1000 * 60 * 60 * 24));
 
     // Denda keterlambatan
     let dendaTerlambat = 0;
@@ -84,7 +85,7 @@ const create = (data, callback) => {
 
     // Hitung denda berdasarkan tanggal dan kondisi
     const tanggalKembali = new Date();
-    const { late, fine } = hitungDenda(return_date_expected, return_date, item_condition);
+    const { late, denda } = hitungDenda(return_date_expected, tanggalKembali, item_condition);
 
     const query = `
         INSERT INTO return_data (borrow_id, officer_id, item_condition, late, fine, notes)

@@ -76,7 +76,7 @@ const create = (req, res) => {
         const borrow_data = results[0];
 
         // Cek apakah borrow_data statusnya 'dipinjam' atau 'menunggu_pengembalian'
-        if (borrow_data.status !== 'taken' && borrow_data.status !== 'menunggu_pengembalian') {
+        if (borrow_data.status !== 'taken' && borrow_data.status !== 'waiting for return') {
             return res.status(400).json({
                 success: false,
                 message: "Status peminjaman tidak valid untuk dikembalikan"
@@ -89,7 +89,7 @@ const create = (req, res) => {
             officer_id,
             item_condition,
             notes,
-            retunr_date_expected: borrow_data.retunr_date_expected
+            return_date_expected: borrow_data.return_date_expecte
         };
 
         // Buat record pengembalian
@@ -110,17 +110,17 @@ const create = (req, res) => {
             }
 
             // Update status borrow_data menjadi 'dikembalikan'
-            borrow.updateStatus(borrow_id, 'dikembalikan', (err) => {
+            borrow.updateStatus(borrow_id, 'available', (err) => {
                 if (err) console.error("Gagal update status borrow_data:", err);
             });
 
             // Kembalikan jumlah tersedia alat
-            item.updateJumlahTersedia(borrow_data.id_items, borrow_data.jumlah_pinjam, 'tambah', (err) => {
+            item.updateJumlahTersedia(borrow_data.id_items, borrow_data.item_count, 'tambah', (err) => {
                 if (err) console.error("Gagal update jumlah alat:", err);
             });
 
             // Hitung denda untuk response (dengan kondisi)
-            const { terlambat_hari, denda } = returning_item.hitungDenda(
+            const { late, denda } = returning_item.hitungDenda(
                 borrow_data.retunr_date_expected,
                 new Date(),
                 item_condition
@@ -132,7 +132,7 @@ const create = (req, res) => {
                 aksi: 'CREATE',
                 tabel_terkait: 'pengembalian',
                 id_data: results.insertId,
-                keterangan: `returning_item alat: ${borrow_data.nama_alat}. Denda: Rp ${denda}`
+                keterangan: `returning_item alat: ${borrow_data.item_name}. Denda: Rp ${denda}`
             }, () => { });
 
             res.status(201).json({
@@ -140,7 +140,7 @@ const create = (req, res) => {
                 message: "Berhasil memproses pengembalian",
                 data: {
                     id: results.insertId,
-                    terlambat_hari,
+                    terlambat_hari:late,
                     denda,
                     denda_formatted: `Rp ${denda.toLocaleString('id-ID')}`
                 }
@@ -152,7 +152,9 @@ const create = (req, res) => {
 const confirmReturn = (req, res) => {
     const borrowId = req.params.id;
     const officer_id = req.user.id;
-
+    const { item_condition, notes } = req.body;
+    const normalizedCondition = item_condition || 'normal';
+    
     borrow.getById(borrowId, (err, results) => {
         if (err) {
             return res.status(500).json({
@@ -194,7 +196,13 @@ const confirmReturn = (req, res) => {
                 });
             }
 
-            returnModel.confirm(borrowId, officer_id, (err) => {
+            const { late, denda } = returning_item.hitungDenda(
+                peminjaman.return_date_expected,
+                new Date(),
+                normalizedCondition
+            );
+
+            returnModel.confirm(borrowId, officer_id, normalizedCondition, late, denda, notes, (err) => {
                 if (err) {
                     return res.status(500).json({
                         success: false,
@@ -230,12 +238,17 @@ const confirmReturn = (req, res) => {
                                 aksi: 'CONFIRM_RETURN',
                                 tabel_terkait: 'peminjaman',
                                 id_data: borrowId,
-                                keterangan: `Pengembalian dikonfirmasi: ID ${borrowId}`
+                                 keterangan: `Pengembalian dikonfirmasi: ID ${borrowId}. Denda: Rp ${denda}`
                             }, () => { });
 
                             return res.status(200).json({
                                 success: true,
-                                message: 'Pengembalian berhasil dikonfirmasi'
+                                message: 'Pengembalian berhasil dikonfirmasi',
+                                data: {
+                                    late,
+                                    denda,
+                                    denda_formatted: `Rp ${denda.toLocaleString('id-ID')}`
+                                }
                             });
                         });
                     }
@@ -266,7 +279,7 @@ const deletereturning_item = (req, res) => {
 
         // Catat log aktivitas
         activityLog.create({
-            id_user: req.userId,
+            id_user: req.user.id,
             aksi: 'DELETE',
             tabel_terkait: 'pengembalian',
             id_data: id,

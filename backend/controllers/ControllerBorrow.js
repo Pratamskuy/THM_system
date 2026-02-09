@@ -189,7 +189,7 @@ const create = (req, res) => {
 // Endpoint: PUT /api/peminjaman/:id/approve
 const approve = (req, res) => {
     const { id } = req.params;
-    const officer_id = req.userId;
+    const officer_id = req.user.id;
 
     // Ambil data peminjaman dulu
     borrow.getById(id, (err, results) => {
@@ -251,7 +251,7 @@ const approve = (req, res) => {
 const reject = (req, res) => {
     const { id } = req.params;
     const { catatan } = req.body;
-    const officer_id = req.userId;
+    const officer_id = req.user.id;
 
     borrow.reject(id, officer_id, catatan, (err, results) => {
         if (err) {
@@ -299,7 +299,7 @@ const getReturnRequests = (req, res) => {
 
         // Filter manual karena borrow.getAll ambil semua
         // Alternatif: buat model function khusus biar lebih efisien
-        const returnRequests = results.filter(item => item.status === 'waiting for return');
+        const returnRequests = results.filter(item => item.status === 'waiting for return   ');
 
         res.status(200).json({
             success: true,
@@ -329,7 +329,7 @@ const deleteborrow = (req, res) => {
 
         // Catat log aktivitas
         activityLog.create({
-            id_user: req.userId,
+            id_user: req.user.id,
             aksi: 'DELETE',
             tabel_terkait: 'peminjaman',
             id_data: id,
