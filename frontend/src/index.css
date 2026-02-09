@@ -308,7 +308,8 @@ body {
 }
 
 .badge-approved,
-.badge-taken {
+.badge-taken
+.badge-available {
   background-color: #d1fae5;
   color: #065f46;
 }

@@ -214,6 +214,10 @@ export const returnAPI = {
     apiCall(`/pengembalian/${id}`, {
       method: 'DELETE',
     }),
+    confirm: (id) =>
+      apiCall(`/pengembalian/${id}/confirm`, {
+        method: 'PUT',
+      }),
 };
 
 // Log APIs

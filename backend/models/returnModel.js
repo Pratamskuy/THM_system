@@ -16,7 +16,18 @@ const create = (data, callback) => {
   db.query(query, [borrow_id], callback);
 };
 
+const confirm = (borrow_id, officer_id, callback) => {
+  const query = `
+    UPDATE return_data
+    SET officer_id = ?, return_date = NOW()
+    WHERE borrow_id = ?
+  `;
+
+  db.query(query, [officer_id, borrow_id], callback);
+};
+
 module.exports = {
   findByBorrowId,
-  create
+  create,
+  confirm
 };

@@ -2,6 +2,7 @@ const returning_item = require('../models/kembali');
 const borrow = require('../models/pinjam');
 const item = require('../models/item');
 const activityLog = require('../models/activityLog');
+const returnModel = require('../models/returnModel')
 
 // ===== GET ALL PENGEMBALIAN =====
 // Endpoint: GET /api/pengembalian
@@ -148,40 +149,101 @@ const create = (req, res) => {
     });
 };
 
-const confirmReturn = async (req, res) => {
-    try {
-      const id = req.params.id;
-      const officer_id = req.user.id;
-  
-      const peminjaman = await borrowModel.getById(id);
-      if (!peminjaman) {
-        return res.status(404).json({ msg: 'Peminjaman tidak ditemukan' });
-      }
-  
-      if (peminjaman.status !== 'waiting for return') {
-        return res.status(400).json({ msg: 'Status peminjaman tidak valid' });
-      }
-  
-      // update return_data
-      await returnModel.confirm(id, officer_id);
-  
-      // update peminjaman
-      await borrowModel.updateStatus(id, 'returned');
-  
-      // balikin stok barang
-      await itemModel.addStock(
-        peminjaman.id_items,
-        peminjaman.item_count
-      );
-  
-      res.json({ msg: 'Pengembalian berhasil dikonfirmasi' });
-  
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ msg: 'Server error' });
-    }
-  };
-  
+const confirmReturn = (req, res) => {
+    const borrowId = req.params.id;
+    const officer_id = req.user.id;
+
+    borrow.getById(borrowId, (err, results) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                message: 'Gagal mengambil data peminjaman',
+                error: err.message
+            });
+        }
+
+        if (results.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Peminjaman tidak ditemukan'
+            });
+        }
+
+        const peminjaman = results[0];
+
+        if (peminjaman.status !== 'waiting for return') {
+            return res.status(400).json({
+                success: false,
+                message: 'Status peminjaman tidak valid untuk dikonfirmasi'
+            });
+        }
+
+        returnModel.findByBorrowId(borrowId, (err, returnRows) => {
+            if (err) {
+                return res.status(500).json({
+                    success: false,
+                    message: 'Gagal mengambil data pengembalian',
+                    error: err.message
+                });
+            }
+
+            if (returnRows.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Data pengembalian belum diajukan'
+                });
+            }
+
+            returnModel.confirm(borrowId, officer_id, (err) => {
+                if (err) {
+                    return res.status(500).json({
+                        success: false,
+                        message: 'Gagal mengonfirmasi pengembalian',
+                        error: err.message
+                    });
+                }
+
+                item.updateJumlahTersedia(
+                    peminjaman.id_items,
+                    peminjaman.item_count,
+                    'tambah',
+                    (err) => {
+                        if (err) {
+                            return res.status(500).json({
+                                success: false,
+                                message: 'Gagal mengembalikan stok item',
+                                error: err.message
+                            });
+                        }
+
+                        borrow.updateStatus(borrowId, 'available', (err) => {
+                            if (err) {
+                                return res.status(500).json({
+                                    success: false,
+                                    message: 'Gagal memperbarui status peminjaman',
+                                    error: err.message
+                                });
+                            }
+
+                            activityLog.create({
+                                id_user: officer_id,
+                                aksi: 'CONFIRM_RETURN',
+                                tabel_terkait: 'peminjaman',
+                                id_data: borrowId,
+                                keterangan: `Pengembalian dikonfirmasi: ID ${borrowId}`
+                            }, () => { });
+
+                            return res.status(200).json({
+                                success: true,
+                                message: 'Pengembalian berhasil dikonfirmasi'
+                            });
+                        });
+                    }
+                );
+            });
+        });
+    });
+};
 // ===== DELETE PENGEMBALIAN =====
 // Endpoint: DELETE /api/pengembalian/:id
 const deletereturning_item = (req, res) => {
