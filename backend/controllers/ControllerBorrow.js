@@ -382,7 +382,7 @@ const requestReturn = (req, res) => {
       if (peminjaman.status !== 'taken') {
         return res.status(400).json({
           success: false,
-          message: err
+          message: 'Status peminjaman tidak valid untuk request return'
         });
       }
   
@@ -406,9 +406,7 @@ const requestReturn = (req, res) => {
         // 5. Insert ke return_data
         returnModel.create(
           {
-            borrow_id,
-            id_offficer,
-            status: 'waiting for return'
+            borrow_id
           },
           (err) => {
             if (err) {
