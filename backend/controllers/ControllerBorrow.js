@@ -284,8 +284,6 @@ const reject = (req, res) => {
     });
 };
 
-// ===== DELETE PEMINJAMAN =====
-// Endpoint: DELETE /api/peminjaman/:id
 // ===== GET RETURN REQUESTS =====
 // Endpoint: GET /api/peminjaman/return-requests
 // Untuk petugas melihat pengajuan pengembalian
@@ -301,7 +299,7 @@ const getReturnRequests = (req, res) => {
 
         // Filter manual karena borrow.getAll ambil semua
         // Alternatif: buat model function khusus biar lebih efisien
-        const returnRequests = results.filter(item => item.status === 'menunggu_pengembalian');
+        const returnRequests = results.filter(item => item.status === 'waiting for return');
 
         res.status(200).json({
             success: true,
