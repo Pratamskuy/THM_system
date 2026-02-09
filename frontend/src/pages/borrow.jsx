@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { borrowAPI, itemAPI } from '../services/api';
+import { borrowAPI, itemAPI, returnAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
 function Borrows() {
@@ -93,6 +93,18 @@ function Borrows() {
         await borrowAPI.requestReturn(id);
         loadBorrows();
         alert('Return request submitted!');
+      } catch (error) {
+        alert(error.message);
+      }
+    }
+  };
+
+  const handleConfirmReturn = async (id) => {
+    if (window.confirm('Confirm return for this borrow?')) {
+      try {
+        await returnAPI.confirm(id);
+        loadBorrows();
+        alert('Return confirmed!');
       } catch (error) {
         alert(error.message);
       }
@@ -211,6 +223,14 @@ function Borrows() {
                               Reject
                             </button>
                           </>
+                        )}
+                                {isAdminOrPetugas() && borrow.status === 'waiting for return' && (
+                          <button
+                            className="btn btn-sm btn-primary"
+                            onClick={() => handleConfirmReturn(borrow.id)}
+                          >
+                            ACC Return
+                          </button>
                         )}
                         {!isAdminOrPetugas() && borrow.status === 'taken' && (
                           <button
