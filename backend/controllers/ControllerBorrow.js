@@ -354,7 +354,8 @@ const requestReturn = async (req, res) => {
       const user_id = req.user.id;
   
       // ambil data peminjaman
-      const peminjaman = await borrow.getById(id);
+      const result = await borrow.getById(id);
+      const peminjaman = result[0];
       if (!peminjaman) {
         return res.status(404).json({ msg: 'Peminjaman tidak ditemukan' });
       }
