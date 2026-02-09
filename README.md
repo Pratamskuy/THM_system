@@ -1,1 +1,1 @@
-NDAS RASANE DADI *seket*
+GOD HELP US.
