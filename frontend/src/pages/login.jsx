@@ -29,7 +29,7 @@ function Login() {
   return (
     <div className="auth-container">
       <div className="auth-card">
-        <h1 className="auth-title">Welcome to THM</h1>
+        <h1 className="auth-title">Welcome to THMs</h1>
         <p className="auth-subtitle">Tool & Hardware Management System</p>
         
         {error && (

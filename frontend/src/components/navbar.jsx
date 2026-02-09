@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/authcontext';
+import { useAuth } from '../context/AuthContext';
 
 function Navbar() {
   const { user, logout, isAdmin } = useAuth();
@@ -16,7 +16,7 @@ function Navbar() {
     <nav className="navbar">
       <div className="navbar-content">
         <Link to="/dashboard" className="navbar-brand">
-          THM
+          THMs
         </Link>
         
         <ul className="navbar-menu">

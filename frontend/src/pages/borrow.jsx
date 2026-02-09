@@ -229,7 +229,7 @@ function Borrows() {
                             className="btn btn-sm btn-primary"
                             onClick={() => handleConfirmReturn(borrow.id)}
                           >
-                            ACC Return
+                            Accept Return
                           </button>
                         )}
                         {!isAdminOrPetugas() && borrow.status === 'taken' && (
