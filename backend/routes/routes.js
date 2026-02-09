@@ -48,7 +48,6 @@ router.put('/peminjaman/:id/return', verifyToken, borrowController.requestReturn
 
 router.get('/pengembalian', verifyToken, isAdminOrPetugas, returningController.getAll);
 router.put('/pengembalian/:id/confirm', verifyToken, isAdminOrPetugas, returningController.confirmReturn)
-router.put('/pengembalian/:id/return', verifyToken, borrowController.requestReturn)
 router.get('/pengembalian/:id', verifyToken, returningController.getById);
 router.post('/pengembalian', verifyToken, isAdminOrPetugas, returningController.create);
 router.delete('/pengembalian/:id', verifyToken, isAdmin, returningController.deletereturning_item);
