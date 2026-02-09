@@ -346,52 +346,104 @@ const deleteborrow = (req, res) => {
 };
 
 // ===== REQUEST RETURN (AJUKAN PENGEMBALIAN) =====
-// Endpoint: PUT /api/peminjaman/:id/request-return
-// Untuk peminjam mengajukan pengembalian item
-const requestReturn = async (req, res) => {
-    try {
-      const id = req.params.id;
-      const user_id = req.user.id;
+// PUT /api/peminjaman/:id/request-return
+const requestReturn = (req, res) => {
+    const borrow_id = req.params.id;
+    const id_user = req.user.id;
   
-      // ambil data peminjaman
-      const result = await borrow.getById(id);
-      const peminjaman = result[0];
-      if (!peminjaman) {
-        return res.status(404).json({ msg: 'Peminjaman tidak ditemukan' });
+    // 1. Ambil data peminjaman
+    borrow.getById(borrow_id, (err, results) => {
+      if (err) {
+        console.error(err);
+        return res.status(500).json({
+          success: false,
+          message: 'Server error'
+        });
       }
   
-      // validasi status
+      if (results.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'Peminjaman tidak ditemukan'
+        });
+      }
+  
+      const peminjaman = results[0];
+  
+      // 2. Validasi pemilik
+      if (peminjaman.id_user !== id_user) {
+        return res.status(403).json({
+          success: false,
+          message: 'Bukan pemilik peminjaman'
+        });
+      }
+  
+      // 3. Validasi status
       if (peminjaman.status !== 'taken') {
-        return res.status(400).json({ msg: 'Peminjaman belum bisa dikembalikan' });
+        return res.status(400).json({
+          success: false,
+          message: err
+        });
       }
   
-      // cegah double request
-      const existingReturn = await returnModel.findByBorrowId(id);
-      if (existingReturn.length > 0) {
-        return res.status(400).json({ msg: 'Return sudah diajukan' });
-      }
+      // 4. Cek apakah sudah pernah request return
+      returnModel.findByBorrowId(borrow_id, (err, existingReturn) => {
+        if (err) {
+          console.error(err);
+          return res.status(500).json({
+            success: false,
+            message: 'Server error'
+          });
+        }
   
-      // update status peminjaman
-      await borrow.updateStatus(id, 'waiting for return');
+        if (existingReturn.length > 0) {
+          return res.status(400).json({
+            success: false,
+            message: 'Request pengembalian sudah diajukan'
+          });
+        }
   
-      // insert ke return_data
-      await returnModel.create({
-        borrow_id: id,
-        user_id,
-        status: 'waiting',
-        requested_at: new Date()
+        // 5. Insert ke return_data
+        returnModel.create(
+          {
+            borrow_id,
+            id_offficer,
+            status: 'waiting for return'
+          },
+          (err) => {
+            if (err) {
+              console.error(err);
+              return res.status(500).json({
+                success: false,
+                message: 'Gagal membuat request pengembalian'
+              });
+            }
+  
+            // 6. Update status peminjaman
+            borrow.updateStatus(
+              borrow_id,
+              'waiting for return', // pastikan status ini valid
+              (err) => {
+                if (err) {
+                  console.error(err);
+                  return res.status(500).json({
+                    success: false,
+                    message: 'Gagal update status peminjaman'
+                  });
+                }
+  
+                return res.status(200).json({
+                  success: true,
+                  message: 'Request pengembalian berhasil diajukan'
+                });
+              }
+            );
+          }
+        );
       });
-  
-      res.json({ msg: 'Request pengembalian berhasil' });
-  
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ msg: 'Server error' });
-    }
+    });
   };
-
-
-// Export semua fungsi
+  
 module.exports = {
     getAll,
     getById,
