@@ -127,8 +127,7 @@ npm run dev
 The app will start on `http://localhost:5173`
 
 ### Connecting to Backend
-The frontend is pre-configured to connect to your backend at `http://localhost:3000/api`. Make sure your backend is running first!
-
+The frontend is pre-configured to connect to your backend at `http://localhost:3000/api`.
 ## 🎭 Role-Based Features
 
 ### Peminjam (Borrower) - role_id: 3

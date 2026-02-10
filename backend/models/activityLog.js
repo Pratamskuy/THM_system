@@ -7,7 +7,7 @@ const getAll = (callback) => {
             user_data.full_name as full_name,
             user_data.email as email
         FROM log
-        LEFT JOIN users ON log.id_user = user_data.id
+        LEFT JOIN user_data ON log.id_user = user_data.id
         ORDER BY log.created_at DESC
         LIMIT 100
     `;

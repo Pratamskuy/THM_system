@@ -1,7 +1,7 @@
 const activityLog = require('../models/activityLog')
 
 const getAll = (req, res) => {
-    LogAktivitas.getAll((err, results) => {
+    activityLog.getAll((err, results) => {
         if (err) {
             return res.status(500).json({
                 success: false,
