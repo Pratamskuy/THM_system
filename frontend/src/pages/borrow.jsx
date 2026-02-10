@@ -3,12 +3,15 @@ import { borrowAPI, itemAPI, returnAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
 function Borrows() {
-  const { isAdminOrPetugas } = useAuth();
+  const { isAdminOrPetugas, user } = useAuth();
   const [borrows, setBorrows] = useState([]);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [filter, setFilter] = useState('all');
+  const [reportBorrows, setReportBorrows] = useState([]);
+  const [isPrintReady, setIsPrintReady] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
   const [formData, setFormData] = useState({
     id_items: '',
     item_count: 1,
@@ -20,6 +23,18 @@ function Borrows() {
     loadBorrows();
     loadAvailableItems();
   }, [filter]);
+
+  
+  useEffect(() => {
+    if (isPrinting && isPrintReady) {
+      const timer = setTimeout(() => {
+        window.print();
+        setIsPrinting(false);
+      }, 100);
+
+      return () => clearTimeout(timer);
+    }
+  }, [isPrinting, isPrintReady]);
 
   const loadBorrows = async () => {
     try {
@@ -110,6 +125,18 @@ function Borrows() {
       }
     }
   };
+  const handlePrintReport = async () => {
+    try {
+      setIsPrintReady(false);
+      setIsPrinting(true);
+      const res = await borrowAPI.getAll();
+      setReportBorrows(res.data || []);
+      setIsPrintReady(true);
+    } catch (error) {
+      setIsPrinting(false);
+      alert(error.message);
+    }
+  };
 
   const openCreateModal = () => {
     setFormData({
@@ -131,11 +158,16 @@ function Borrows() {
         <div className="spinner"></div>
       </div>
     );
-  }
+    }
 
+    const formatDate = (dateValue) => {
+      if (!dateValue) return '-';
+      return new Date(dateValue).toLocaleDateString('id-ID');
+    };
+  
   return (
     <div>
-      <div className="card">
+      <div className="card no-print">
         <div className="flex justify-between items-center">
           <h1 className="card-header">
             {isAdminOrPetugas() ? 'Borrow Requests Management' : 'My Borrows'}
@@ -148,30 +180,37 @@ function Borrows() {
         </div>
 
         {isAdminOrPetugas() && (
-          <div className="btn-group mt-2">
-            <button
-              className={`btn btn-sm ${filter === 'all' ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={() => setFilter('all')}
-            >
-              All
-            </button>
-            <button
-              className={`btn btn-sm ${filter === 'pending' ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={() => setFilter('pending')}
-            >
-              Pending
-            </button>
-            <button
-              className={`btn btn-sm ${filter === 'active' ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={() => setFilter('active')}
-            >
-              Active
-            </button>
+          <div className="flex justify-between items-center mt-2">
+            <div className="btn-group">
+              <button
+                className={`btn btn-sm ${filter === 'all' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setFilter('all')}
+              >
+                All
+              </button>
+              <button
+                className={`btn btn-sm ${filter === 'pending' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setFilter('pending')}
+              >
+                Pending
+              </button>
+              <button
+                className={`btn btn-sm ${filter === 'active' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setFilter('active')}
+              >
+                Active
+              </button>
+            </div>
+            <button className="btn btn-sm btn-secondary"
+              onClick={handlePrintReport}
+              disabled={isPrinting}
+            > {isPrinting ? 'Preparing...' : 'Print Borrow Report'} </button>
           </div>
+          
         )}
       </div>
 
-      <div className="card">
+      <div className="card no-print">
         {borrows.length === 0 ? (
           <div className="empty-state">
             <div className="empty-state-icon">📋</div>
@@ -196,7 +235,7 @@ function Borrows() {
                 {borrows.map((borrow) => (
                   <tr key={borrow.id}>
                     <td>#{borrow.id}</td>
-                    {isAdminOrPetugas() && <td>{borrow.nama_peminjam}</td>}
+                    {isAdminOrPetugas() && <td>{borrow.full_name}</td>}
                     <td>{borrow.item_name}</td>
                     <td>{borrow.item_count}</td>
                     <td>{new Date(borrow.borrow_date).toLocaleDateString()}</td>
@@ -250,6 +289,63 @@ function Borrows() {
         )}
       </div>
 
+
+
+      {isAdminOrPetugas() && (
+        <section className="print-only">
+          <div className="report-header">
+            <div>
+              <h2>Laporan Riwayat Peminjaman</h2>
+              <p className="report-meta">
+                Dicetak oleh: {user?.full_name || user?.name || 'Petugas/Admin'}
+              </p>
+            </div>
+            <div className="report-meta">
+              Tanggal cetak: {new Date().toLocaleString('id-ID')}
+            </div>
+          </div>
+
+          <p className="report-summary">
+            Total transaksi peminjaman: {reportBorrows.length}
+          </p>
+
+          <table className="table report-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Peminjam</th>
+                <th>Item</th>
+                <th>Qty</th>
+                <th>Tgl Pinjam</th>
+                <th>Tgl Kembali</th>
+                <th>Status</th>
+                <th>Petugas</th>
+              </tr>
+            </thead>
+            <tbody>
+              {reportBorrows.length === 0 ? (
+                <tr>
+                  <td colSpan="8">Tidak ada data peminjaman.</td>
+                </tr>
+              ) : (
+                reportBorrows.map((borrow) => (
+                  <tr key={`report-${borrow.id}`}>
+                    <td>#{borrow.id}</td>
+                    <td>{borrow.full_name || '-'}</td>
+                    <td>{borrow.item_name || '-'}</td>
+                    <td>{borrow.item_count || 0}</td>
+                    <td>{formatDate(borrow.borrow_date)}</td>
+                    <td>{formatDate(borrow.return_date_expected)}</td>
+                    <td>{borrow.status || '-'}</td>
+                    <td>{borrow.officer_name || '-'}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </section>
+      )}
+  
       {showModal && (
         <div className="modal-overlay" onClick={closeModal}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
